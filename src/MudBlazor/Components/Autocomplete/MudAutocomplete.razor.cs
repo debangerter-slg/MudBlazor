@@ -66,9 +66,8 @@ namespace MudBlazor
                 .AddClass("progress-indicator-circular--with-adornment", Adornment == Adornment.End)
                 .Build();
 
-        protected string GetListItemClassname(bool isSelected) =>
+        protected string GetListItemClassname() =>
             new CssBuilder()
-                .AddClass("mud-selected-item mud-primary-text mud-primary-hover", isSelected)
                 .AddClass(ListItemClass)
                 .Build();
 
@@ -542,6 +541,8 @@ namespace MudBlazor
                 return _open ? CloseIcon : OpenIcon;
             }
         }
+
+        private T? SelectedItem { get; set; }
 
         /// <summary>
         /// Returns a value for the <c>autocomplete</c> attribute, either supplied by default or the one specified in the attribute overrides.
