@@ -2533,45 +2533,48 @@ namespace MudBlazor.UnitTests.Components
         }
 
         /// <summary>
-        /// Ensures that when an item is selected by clicking it in the autocomplete dropdown,
-        /// exactly one list item has the selection CSS classes applied.
+        /// Ensures that when an item is selected, only the selected item has the CSS classes applied.
         /// </summary>
         [Test]
         public async Task Autocomplete_ChangeSelectedItem_ExactlyOneItemIsSelected()
         {
-            const string ListItemQuerySelector = "div.mud-list-item";
-            const string SelectedItemClassName = "mud-selected-item";
-            const string Alaska = "Alaska";
+            const string SelectedItemQuery = "div.mud-selected-item.mud-primary-text.mud-primary-hover";
+            const string AlaskaString = "Alaska";
 
             var comp = Context.Render<AutocompleteTest1>();
             var autocompleteComponent = comp.FindComponent<MudAutocomplete<string>>();
             var autocomplete = autocompleteComponent.Instance;
 
-            // Open the dropdown with multiple matching items ("al" matches Alabama, Alaska, Marshall Islands, etc.)
+            // Open the dropdown with "Alaska"
+            await autocompleteComponent.Find("input").InputAsync(AlaskaString);
+            await comp.WaitForAssertionAsync(() =>
+                comp.Find("div.mud-popover").ClassList.Should().Contain("mud-popover-open"));
+
+            // Select "Alaska"
+            await autocompleteComponent.Find("input").KeyUpAsync(new KeyboardEventArgs { Key = Key.Enter.Value });
+            autocomplete.ReadText.Should().Be(AlaskaString);
+
+            // Reopen the dropdown with "al" so multiple items are visible (Alabama, Alaska, California...)
             await autocompleteComponent.Find("input").InputAsync("al");
-            await comp.WaitForAssertionAsync(() => comp.Find("div.mud-popover").ClassList.Should().Contain("mud-popover-open"));
+            await comp.WaitForAssertionAsync(() =>
+                comp.Find("div.mud-popover").ClassList.Should().Contain("mud-popover-open"));
 
             // Ensure multiple items are shown to make the assertion meaningful
             var items = comp.FindComponents<MudListItem<string>>().ToArray();
             items.Length.Should().BeGreaterThan(1, "searching for 'al' should yield multiple results");
 
-            // Click 'Alaska' to change the selected value
-            await items.Single(s => s.Markup.Contains(Alaska)).Find(ListItemQuerySelector).ClickAsync(); // TODO: Does not change the selected item
-            await comp.WaitForAssertionAsync(() => autocomplete.ReadValue.Should().Be(Alaska));
+            // Ensure "Alaska" is not the first item in the list
+            var item = items.SingleOrDefault(x => x.Markup.Contains(AlaskaString));
+            item.Should().NotBeNull("Alaska should be in the list");
+            items.ToList().IndexOf(item).Should().BeGreaterThan(0, "Alaska should be in the list after Alabama");
 
-            // Reopen the dropdown with the same search text so multiple items are visible again
-            await autocompleteComponent.Find("input").InputAsync("al");
-            await comp.WaitForAssertionAsync(() => comp.Find("div.mud-popover").ClassList.Should().Contain("mud-popover-open"));
-
-            // Assert that exactly one item has the selection CSS class — no duplicate selection highlighting
+            // Assert that exactly one item has the selection CSS class
             await comp.WaitForAssertionAsync(() =>
-                comp.FindAll($"div.{SelectedItemClassName}").Should().ContainSingle(
+                comp.FindAll(SelectedItemQuery).Should().ContainSingle(
                     "exactly one list item should have the selection CSS class applied"));
 
-            await Console.Out.WriteLineAsync(string.Join(", ", comp.FindAll($"div.{SelectedItemClassName}").Select(x => x.TextContent)));
-
             // Assert that the single selected item is indeed Alaska
-            // comp.FindAll($"div.{SelectedItemClassName}")[0].TextContent.Should().Contain(Alaska);
+            comp.Find(SelectedItemQuery).TextContent.Should().Be(AlaskaString);
         }
 
         [Test]
@@ -2624,8 +2627,6 @@ namespace MudBlazor.UnitTests.Components
 
             return (searchStarted, searchCompletion, SearchFunc);
         }
-
-
 
         private sealed class CoerceValueElement
         {
